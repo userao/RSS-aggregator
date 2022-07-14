@@ -1,0 +1,28 @@
+name: Code tests and linter check
+
+on: push
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: installing packages
+        run: make install-packages
+
+      - name: linter check
+        run: make lint
+
+      - name: testing code
+        run: make test
+
+      - name: check coverage
+        run: make test-coverage
+
+      - name: publish code coverage
+        uses: paambaati/codeclimate-action@v3.0.0
+        env:
+          CC_TEST_REPORTER_ID: ${{ secrets.CC_TEST_REPORTER_ID }}
+        with:
+          debug: true
