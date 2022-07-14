@@ -1,6 +1,8 @@
 name: Code tests and linter check
 
-on: push
+on:
+  - push
+  - pull_request
 
 jobs:
   build:
