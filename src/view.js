@@ -1,19 +1,18 @@
-export default (elements) => (path, value) => {
-  const errorFeedback = elements.container.querySelector('.feedback');
-  switch (path) {
-    case 'valid':
-      if (value === false) {
-        elements.rssInput.classList.add('is-invalid');
-      } else {
-        elements.rssInput.classList.remove('is-invalid');
-        elements.form.reset();
-        elements.rssInput.focus();
-        errorFeedback.textContent = '';
-      }
+export default (state, elements, i18nInstance) => {
+  elements.title.textContent = i18nInstance.t('title');
+  elements.submitButton.textContent = i18nInstance.t('add');
+  elements.label.textContent = i18nInstance.t('label');
+  elements.input.setAttribute('placeholder', `${i18nInstance.t('label')}`);
+
+  switch (state.rssField.state) {
+    case 'invalid':
+      elements.input.classList.add('is-invalid');
+      elements.errorFeedback.textContent = state.rssField.errors;
       break;
 
-    case 'form.processErrors':
-      errorFeedback.textContent = value;
+    case 'added':
+      elements.input.classList.remove('is-invalid');
+      elements.errorFeedback.textContent = '';
       break;
 
     default:
