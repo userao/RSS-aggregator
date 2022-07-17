@@ -1,1 +1,3 @@
-import _ from 'lodash';
+import app from './addRSS.js';
+
+app();
