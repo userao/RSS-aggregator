@@ -1,6 +1,7 @@
 import onChange from 'on-change';
 import i18next from 'i18next';
 import * as yup from 'yup';
+import axios from 'axios';
 import resources from './resources.js';
 import render from './view.js';
 
@@ -10,6 +11,19 @@ const schema = yup.string()
   )
   .required();
 
+const parseResponse = (response) => {
+  const parser = new DOMParser();
+  const dom = parser.parseFromString(response.data, 'text/xml');
+  const title = dom.querySelector('title');
+  const description = dom.querySelector('description');
+  const items = dom.querySelectorAll('item');
+  return {
+    title,
+    description,
+    items: [...items],
+  };
+};
+
 export default () => {
   const elements = {
     title: document.querySelector('h1'),
@@ -17,7 +31,9 @@ export default () => {
     input: document.querySelector('#url-input'),
     label: document.querySelector('label'),
     submitButton: document.querySelector('button'),
-    errorFeedback: document.querySelector('.feedback'),
+    feedback: document.querySelector('.feedback'),
+    posts: document.querySelector('.posts'),
+    feeds: document.querySelector('.feeds'),
   };
 
   const defaultLanguage = 'en';
@@ -31,6 +47,7 @@ export default () => {
     submitting: {
       rssExists: i18nInstance.t('alreadyExists'),
       invalidURL: i18nInstance.t('mustBeValid'),
+      noValidRSS: i18nInstance.t('noValidRSS'),
     },
   };
 
@@ -38,11 +55,11 @@ export default () => {
     lng: defaultLanguage,
     rssField: {
       state: '',
-      valid: null,
       url: '',
       errors: '',
     },
     rssList: [],
+    urlList: [],
   };
 
   const watchedState = onChange(state, (path) => {
@@ -64,20 +81,39 @@ export default () => {
     watchedState.rssField.url = value;
     schema.validate(value)
       .then(() => {
-        watchedState.rssField.valid = true;
-        if (watchedState.rssList.includes(value)) {
+        if (watchedState.urlList.includes(value)) {
           watchedState.rssField.errors = errors.submitting.rssExists;
-          watchedState.rssField.state = 'invalid';
+          const err = new Error();
+          err.name = 'RSS exists';
+          throw err;
         } else {
-          watchedState.rssList.push(value);
-          watchedState.rssField.state = 'added';
-          watchedState.rssField.errors = '';
+          watchedState.rssField.state = 'requesting';
         }
       })
-      .catch(() => {
-        watchedState.rssField.valid = false;
-        watchedState.rssField.errors = errors.submitting.invalidURL;
-        watchedState.rssField.state = 'invalid';
+      // axios get
+      .then(() => axios.get(value))
+      .then((response) => {
+        watchedState.rssList.errors = '';
+        watchedState.urlList.push(value);
+        const parsedResponse = parseResponse(response);
+        watchedState.rssList.push(parsedResponse);
+        watchedState.rssField.state = 'added';
+      })
+      .catch((err) => {
+        switch (err.name) {
+          case 'ValidationError':
+            watchedState.rssField.errors = errors.submitting.invalidURL;
+            break;
+          case 'RSS exists':
+            watchedState.rssField.errors = errors.submitting.rssExists;
+            break;
+          case 'AxiosError':
+            watchedState.rssField.errors = errors.submitting.noValidRSS;
+            break;
+          default:
+            throw err;
+        }
+        watchedState.rssField.state = 'error';
       });
   });
 
@@ -94,3 +130,5 @@ export default () => {
 
   render(state, elements, i18nInstance);
 };
+
+axios.get('http://news.yandex.ru/Novosibirsk/index.rss').then(console.log);
