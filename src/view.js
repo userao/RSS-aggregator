@@ -1,34 +1,67 @@
-const renderFeeds = ({ title, description }, elements) => {
-  const feedsList = elements.feeds.querySelector('ul');
-
+const renderFeed = (feedTitle, feedDescription, list) => {
   const newFeed = document.createElement('li');
   newFeed.classList.add('list-group-item', 'border-0', 'border-end-0');
 
   const feedHeaderEl = document.createElement('h3');
   feedHeaderEl.classList.add('h6', 'm-0');
-  feedHeaderEl.textContent = title.textContent;
+  feedHeaderEl.textContent = feedTitle.textContent;
 
   const feedDescriptionEl = document.createElement('p');
   feedDescriptionEl.classList.add('m-0', 'small', 'text-black-50');
-  feedDescriptionEl.textContent = description.textContent;
+  feedDescriptionEl.textContent = feedDescription.textContent;
 
   newFeed.append(feedHeaderEl, feedDescriptionEl);
-  feedsList.append(newFeed);
+  list.append(newFeed);
 };
 
-const initFeeds = (elements, i18nInstance) => {
-  const feedsContainer = document.createElement('div');
-  feedsContainer.classList.add('card', 'border-0');
-  const feedsHeaderContainer = document.createElement('div');
-  feedsHeaderContainer.classList.add('card-body');
-  const header = document.createElement('h2');
-  header.classList.add('card-title', 'h4');
-  header.textContent = i18nInstance.t('feeds');
-  const feedsList = document.createElement('ul');
-  feedsList.classList.add('list-group', 'border-0', 'rounded-0');
-  feedsHeaderContainer.append(header);
-  feedsContainer.append(feedsHeaderContainer, feedsList);
-  elements.feeds.append(feedsContainer);
+const renderPosts = (items, list, i18nInstance) => {
+  items.forEach(({ postDescription, postTitle, postUrl }) => {
+    const newPost = document.createElement('li');
+    newPost.classList.add('list-group-item', 'd-flex', 'justify-content-between', 'align-items-start', 'border-0', 'border-end-0');
+
+    const link = document.createElement('a');
+    link.classList.add('fw-bold');
+    link.setAttribute('href', `${postUrl}`);
+    link.textContent = postTitle;
+
+    const button = document.createElement('button');
+    button.classList.add('btn', 'btn-outline-primary', 'btn-sm');
+    button.setAttribute('type', 'button');
+    button.setAttribute('data-bs-toggle', 'modal');
+    button.setAttribute('data-bs-target', '#modal');
+    button.textContent = i18nInstance.t('show');
+
+    newPost.append(link, button);
+    list.append(newPost);
+  });
+};
+
+const render = ({ title, description, items }, elements, i18nInstance) => {
+  const feedsList = elements.feeds.querySelector('ul');
+  const postsList = elements.posts.querySelector('ul');
+
+  renderFeed(title, description, feedsList);
+  renderPosts(items, postsList, i18nInstance);
+};
+
+const init = (elements, i18nInstance) => {
+  Object.entries(elements)
+    .filter(([key]) => key === 'feeds'
+      || key === 'posts')
+    .forEach(([key, element]) => {
+      const container = document.createElement('div');
+      container.classList.add('card', 'border-0');
+      const headerContainer = document.createElement('div');
+      headerContainer.classList.add('card-body');
+      const header = document.createElement('h2');
+      header.classList.add('card-title', 'h4');
+      header.textContent = i18nInstance.t(`${key}`);
+      const list = document.createElement('ul');
+      list.classList.add('list-group', 'border-0', 'rounded-0');
+      headerContainer.append(header);
+      container.append(headerContainer, list);
+      element.append(container);
+    });
 };
 
 export default (state, elements, i18nInstance) => {
@@ -54,10 +87,10 @@ export default (state, elements, i18nInstance) => {
 
     case 'added':
       if (!elements.feeds.children.length) {
-        initFeeds(elements, i18nInstance);
+        init(elements, i18nInstance);
       }
       state.rssList.forEach((rss) => {
-        renderFeeds(rss, elements);
+        render(rss, elements, i18nInstance);
       });
       elements.input.classList.remove('is-invalid');
       elements.feedback.textContent = i18nInstance.t('rssLoaded');

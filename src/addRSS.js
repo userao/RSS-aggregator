@@ -16,11 +16,17 @@ const parseResponse = (response) => {
   const dom = parser.parseFromString(response.data, 'text/xml');
   const title = dom.querySelector('title');
   const description = dom.querySelector('description');
-  const items = dom.querySelectorAll('item');
+  const items = Array.from(dom.querySelectorAll('item'))
+    .map((item) => {
+      const postTitle = item.querySelector('title').textContent;
+      const postUrl = item.querySelector('link').textContent;
+      const postDescription = item.querySelector('description').textContent;
+      return { postTitle, postUrl, postDescription };
+    });
   return {
     title,
     description,
-    items: [...items],
+    items,
   };
 };
 
@@ -130,5 +136,3 @@ export default () => {
 
   render(state, elements, i18nInstance);
 };
-
-axios.get('http://news.yandex.ru/Novosibirsk/index.rss').then(console.log);

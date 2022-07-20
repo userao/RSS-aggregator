@@ -9,6 +9,8 @@ export default {
       noValidRSS: 'The resource does not contain valid RSS',
       rssLoaded: 'RSS successfully loaded',
       feeds: 'Feeds',
+      posts: 'Posts',
+      show: 'Show',
     },
   },
   ru: {
@@ -21,6 +23,8 @@ export default {
       noValidRSS: 'Ресурс не содержит валидный RSS',
       rssLoaded: 'RSS успешно загружен',
       feeds: 'Фиды',
+      posts: 'Посты',
+      show: 'Просмотр',
     },
   },
 };
