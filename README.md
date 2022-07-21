@@ -1,15 +1,15 @@
-### Hexlet tests and linter status:
+# 🚀 Welcome to your new awesome project!
 
-[![Actions Status](https://github.com/userao/frontend-project-lvl3/workflows/hexlet-check/badge.svg)](https://github.com/userao/frontend-project-lvl3/actions)
+This project has been created using **webpack-cli**, you can now run
 
-[![Code tests and linter check](https://github.com/userao/frontend-project-lvl3/actions/workflows/tests-and-linter.yml/badge.svg)](https://github.com/userao/frontend-project-lvl3/actions/workflows/tests-and-linter.yml)
+```
+npm run build
+```
 
-  
+or
 
-### Codeclimate badges
+```
+yarn build
+```
 
-[![Maintainability](https://api.codeclimate.com/v1/badges/cc7882aa0a8a63aafcb5/maintainability)](https://codeclimate.com/github/userao/frontend-project-lvl3/maintainability)
-
-[![Test Coverage](https://api.codeclimate.com/v1/badges/cc7882aa0a8a63aafcb5/test_coverage)](https://codeclimate.com/github/userao/frontend-project-lvl3/test_coverage)
-
-https://frontend-project-lvl3-psi-seven.vercel.app
+to bundle your application
