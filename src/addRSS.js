@@ -1,19 +1,21 @@
 import onChange from 'on-change';
 import i18next from 'i18next';
+import _ from 'lodash';
 import * as yup from 'yup';
 import axios from 'axios';
 import resources from './resources.js';
 import render from './view.js';
 
-const schema = yup.string()
-  .matches(
-    /((https?):\/\/)?(www.)?[a-z0-9]+(\.[a-z]{2,}){1,3}(#?\/?[a-zA-Z0-9#]+)*\/?(\?[a-zA-Z0-9-_]+=[a-zA-Z0-9-%]+&?)?$/,
-  )
+const schema = yup.string().url()
+  // .matches(
+  //   /((https?):\/\/)?(www.)?[a-z0-9]+(\.[a-z]{2,}){1,3}(#?\/?[a-zA-Z0-9#]+)*\/?(\?[a-zA-Z0-9-_]+=[a-zA-Z0-9-%]+&?)?$/,
+  // )
   .required();
 
 const parseResponse = (response) => {
+  const url = response.data.status.url;
   const parser = new DOMParser();
-  const dom = parser.parseFromString(response.data, 'text/xml');
+  const dom = parser.parseFromString(response.data.contents, 'text/xml');
   const title = dom.querySelector('title');
   const description = dom.querySelector('description');
   const items = Array.from(dom.querySelectorAll('item'))
@@ -21,13 +23,40 @@ const parseResponse = (response) => {
       const postTitle = item.querySelector('title').textContent;
       const postUrl = item.querySelector('link').textContent;
       const postDescription = item.querySelector('description').textContent;
-      return { postTitle, postUrl, postDescription };
+      return { postTitle, postUrl, postDescription, state: 'unread', id: _.uniqueId()};
     });
+    console.log(items);
   return {
+    url,
     title,
     description,
     items,
   };
+};
+
+const refresh = (state) => {
+  const urls = state.rssList.reduce((acc, { url }) => [...acc, url], []);
+  const initPromise = Promise.resolve([]);
+  const promise = urls.reduce((acc, url) => {
+    const newAcc = acc.then((contents) =>
+      axios.get(`https://allorigins.hexlet.app/get?url=${encodeURIComponent(url)}`)
+        .then((response) => contents.concat(parseResponse(response))));
+    return newAcc;
+  }, initPromise);
+
+  promise.then((responses) => {
+    responses.forEach((currentRss) => {
+      const { url } = currentRss;
+      const oldRss = _.find(state.rssList, (rss) => rss.url === url);
+      if(!_.isEqual(currentRss.items, oldRss.items)) {
+        oldRss.items = currentRss.items;
+        //хуйня какая то
+        state.rssField.state = 'added'
+      };
+    })
+  });
+
+  setTimeout(() => refresh(state), 5000);
 };
 
 export default () => {
@@ -36,10 +65,11 @@ export default () => {
     form: document.querySelector('.rss-form'),
     input: document.querySelector('#url-input'),
     label: document.querySelector('label'),
-    submitButton: document.querySelector('button'),
+    submitButton: document.querySelector('[type="submit"]'),
     feedback: document.querySelector('.feedback'),
     posts: document.querySelector('.posts'),
     feeds: document.querySelector('.feeds'),
+    modal: document.querySelector('#modal'),
   };
 
   const defaultLanguage = 'en';
@@ -65,7 +95,6 @@ export default () => {
       errors: '',
     },
     rssList: [],
-    urlList: [],
   };
 
   const watchedState = onChange(state, (path) => {
@@ -87,7 +116,7 @@ export default () => {
     watchedState.rssField.url = value;
     schema.validate(value)
       .then(() => {
-        if (watchedState.urlList.includes(value)) {
+        if (watchedState.rssList.filter(({ url }) => url === value).length) {
           watchedState.rssField.errors = errors.submitting.rssExists;
           const err = new Error();
           err.name = 'RSS exists';
@@ -96,11 +125,9 @@ export default () => {
           watchedState.rssField.state = 'requesting';
         }
       })
-      // axios get
-      .then(() => axios.get(value))
+      .then(() => axios.get(`https://allorigins.hexlet.app/get?url=${encodeURIComponent(value)}`))
       .then((response) => {
-        watchedState.rssList.errors = '';
-        watchedState.urlList.push(value);
+        watchedState.rssField.errors = '';
         const parsedResponse = parseResponse(response);
         watchedState.rssList.push(parsedResponse);
         watchedState.rssField.state = 'added';
@@ -134,5 +161,7 @@ export default () => {
     render(state, elements, i18nInstance);
   });
 
+  refresh(state);
   render(state, elements, i18nInstance);
 };
+

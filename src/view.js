@@ -11,11 +11,11 @@ const renderFeed = (feedTitle, feedDescription, list) => {
   feedDescriptionEl.textContent = feedDescription.textContent;
 
   newFeed.append(feedHeaderEl, feedDescriptionEl);
-  list.append(newFeed);
+  list.prepend(newFeed);
 };
 
 const renderPosts = (items, list, i18nInstance) => {
-  items.forEach(({ postDescription, postTitle, postUrl }) => {
+  items.slice().reverse().forEach(({ postDescription, postTitle, postUrl, id }) => {
     const newPost = document.createElement('li');
     newPost.classList.add('list-group-item', 'd-flex', 'justify-content-between', 'align-items-start', 'border-0', 'border-end-0');
 
@@ -29,10 +29,11 @@ const renderPosts = (items, list, i18nInstance) => {
     button.setAttribute('type', 'button');
     button.setAttribute('data-bs-toggle', 'modal');
     button.setAttribute('data-bs-target', '#modal');
+    button.setAttribute('data-id', id)
     button.textContent = i18nInstance.t('show');
 
     newPost.append(link, button);
-    list.append(newPost);
+    list.prepend(newPost);
   });
 };
 
@@ -89,6 +90,8 @@ export default (state, elements, i18nInstance) => {
       if (!elements.feeds.children.length) {
         init(elements, i18nInstance);
       }
+      elements.feeds.querySelector('ul').innerHTML = '';
+      elements.posts.querySelector('ul').innerHTML = '';
       state.rssList.forEach((rss) => {
         render(rss, elements, i18nInstance);
       });
