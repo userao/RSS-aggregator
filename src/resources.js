@@ -11,6 +11,9 @@ export default {
       feeds: 'Feeds',
       posts: 'Posts',
       show: 'Show',
+      close: 'Close',
+      readMore: 'Read more',
+      networkError: 'Network error',
     },
   },
   ru: {
@@ -25,6 +28,9 @@ export default {
       feeds: 'Фиды',
       posts: 'Посты',
       show: 'Просмотр',
+      close: 'Закрыть',
+      readMore: 'Читать полностью',
+      networkError: 'Ошибка сети',
     },
   },
 };
