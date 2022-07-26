@@ -13,17 +13,17 @@ const schema = yup.string().url()
   // )
   .required();
 
-const createPost = (postElement, feedId) => {
+const createPost = (postElement, feedId, postId) => {
   const postTitle = postElement.querySelector('title').textContent;
   const postUrl = postElement.querySelector('link').textContent;
   const postDescription = postElement.querySelector('description').textContent;
   const parentFeedId = feedId;
   return {
-    postTitle, postUrl, postDescription, state: 'unread', parentFeedId, postId: _.uniqueId(),
+    postTitle, postUrl, postDescription, state: 'unread', parentFeedId, postId,
   };
 };
 
-const parseResponse = (response) => {
+const parseResponse = (response, feedId = _.uniqueId(), postId = _.uniqueId()) => {
   const { url } = response.data.status;
   const parser = new DOMParser();
   const dom = parser.parseFromString(response.data.contents, 'text/xml');
@@ -36,9 +36,8 @@ const parseResponse = (response) => {
 
   const title = dom.querySelector('title');
   const description = dom.querySelector('description');
-  const feedId = _.uniqueId();
   const items = Array.from(dom.querySelectorAll('item'))
-    .map((item) => createPost(item, feedId));
+    .map((item) => createPost(item, feedId, postId));
 
   return {
     url,
@@ -49,30 +48,37 @@ const parseResponse = (response) => {
   };
 };
 
-// нормально не работает рефреш
+const refresh = (state) => {
+  const urls = state.rssList.reduce((acc, { url }) => [...acc, url], []);
+  const initPromise = Promise.resolve([]);
+  const promise = urls.reduce((acc, url) => {
+    const newAcc = acc.then((contents) => axios.get(`https://allorigins.hexlet.app/get?url=${encodeURIComponent(url)}`)
+      .then((response) => contents.concat(parseResponse(response, null, null))));
+    return newAcc;
+  }, initPromise);
 
-// const refresh = (state) => {
-//   const urls = state.rssList.reduce((acc, { url }) => [...acc, url], []);
-//   const initPromise = Promise.resolve([]);
-//   const promise = urls.reduce((acc, url) => {
-//     const newAcc = acc.then((contents) => axios.get(`https://allorigins.hexlet.app/get?url=${encodeURIComponent(url)}`)
-//       .then((response) => contents.concat(parseResponse(response))));
-//     return newAcc;
-//   }, initPromise);
+  promise.then((responses) => {
+    responses.forEach((currentRss) => {
+      const { url } = currentRss;
+      const oldRss = _.find(state.rssList, (rss) => rss.url === url);
+      const newPosts = currentRss.items.reduce((acc, item) => {
+        const newAcc = acc.slice();
+        if (!_.find(oldRss.items, (oldItem) => oldItem.postTitle === item.postTitle)) {
+          newAcc.push(item);
+        }
+        return newAcc;
+      }, [])
+        .map((item) => {
+          item.postId = _.uniqueId();
+          item.parentFeedId = oldRss.feedId;
+          return item;
+        });
+      oldRss.items.concat(newPosts);
+    });
+  });
 
-//   promise.then((responses) => {
-//     responses.forEach((currentRss) => {
-//       const { url } = currentRss;
-//       const oldRss = _.find(state.rssList, (rss) => rss.url === url);
-//       if (!_.isEqual(currentRss.items, oldRss.items)) {
-//         oldRss.items = currentRss.items;
-//         state.rssField.state = 'added';
-//       }
-//     });
-//   });
-
-//   setTimeout(() => refresh(state), 5000);
-// };
+  setTimeout(() => refresh(state), 5000);
+};
 
 export default () => {
   const elements = {
@@ -101,6 +107,7 @@ export default () => {
       noValidRSS: i18nInstance.t('noValidRSS'),
       networkError: i18nInstance.t('networkError'),
     },
+    unknownError: i18nInstance.t('unknownError'),
   };
 
   const state = {
@@ -115,7 +122,8 @@ export default () => {
 
   const watchedState = onChange(state, (path) => {
     if (path === 'rssField.state'
-      || path === 'lng') {
+      || path === 'lng'
+      || path === 'rssList') {
       render(state, elements, i18nInstance);
     }
   });
@@ -160,23 +168,22 @@ export default () => {
             watchedState.rssField.errors = errors.submitting.noValidRSS;
             break;
           default:
-            throw err;
+            watchedState.rssField.errors = errors.unknownError;
         }
         watchedState.rssField.state = 'error';
       });
   });
 
-  const lng = document.createElement('button');
-  lng.classList.add('switch', 'btn');
-  document.body.append(lng);
-  lng.addEventListener('click', (evt) => {
-    evt.preventDefault();
-    const newLang = watchedState.lng === 'en' ? 'ru' : 'en';
-    i18nInstance.changeLanguage(newLang);
-    watchedState.lng = newLang;
-    render(state, elements, i18nInstance);
-  });
+  // const lng = document.createElement('button');
+  // lng.classList.add('switch', 'btn', 'btn-primary');
+  // document.body.append(lng);
+  // lng.addEventListener('click', (evt) => {
+  //   evt.preventDefault();
+  //   const newLang = watchedState.lng === 'en' ? 'ru' : 'en';
+  //   i18nInstance.changeLanguage(newLang);
+  //   watchedState.lng = newLang;
+  // });
 
-  // refresh(state);
+  refresh(state);
   render(state, elements, i18nInstance);
 };

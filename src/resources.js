@@ -14,6 +14,7 @@ export default {
       close: 'Close',
       readMore: 'Read more',
       networkError: 'Network error',
+      unknownError: 'Unknown error. Something went wrong',
     },
   },
   ru: {
@@ -31,6 +32,7 @@ export default {
       close: 'Закрыть',
       readMore: 'Читать полностью',
       networkError: 'Ошибка сети',
+      unknownError: 'Неизвестная ошибка. Что-то пошло не так.',
     },
   },
 };
