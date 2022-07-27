@@ -1,4 +1,4 @@
-install-packages:
+install:
 	npm ci
 
 lint:
