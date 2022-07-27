@@ -3,10 +3,6 @@
   "version": "1.0.0",
   "description": "simple RSS aggregator that showing news feed after entering valid RSS URL",
   "main": "index.js",
-  "scripts": {
-    "build": "webpack --mode=production --node-env=production",
-    "start": "webpack serve --open --mode=development --node-env=development"
-  },
   "keywords": [],
   "author": "Andrey O",
   "license": "ISC",
@@ -20,6 +16,7 @@
     "eslint-config-airbnb": "^19.0.4",
     "html-webpack-plugin": "^5.5.0",
     "mini-css-extract-plugin": "^2.6.1",
+    "postcss-loader": "^7.0.1",
     "prettier": "^2.7.1",
     "style-loader": "^3.3.1",
     "webpack": "^5.73.0",
@@ -27,8 +24,8 @@
     "webpack-dev-server": "^4.9.3"
   },
   "dependencies": {
-    "bootstrap": "^5.2.0",
     "axios": "^0.27.2",
+    "bootstrap": "^5.2.0",
     "i18next": "^21.8.14",
     "lodash": "^4.17.21",
     "on-change": "^4.0.1",
