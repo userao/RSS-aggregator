@@ -52,7 +52,7 @@ const refresh = (state) => {
   const urls = state.rssList.reduce((acc, { url }) => [...acc, url], []);
   const initPromise = Promise.resolve([]);
   const promise = urls.reduce((acc, url) => {
-    const newAcc = acc.then((contents) => axios.get(`https://allorigins.hexlet.app/get?url=${encodeURIComponent(url)}`)
+    const newAcc = acc.then((contents) => axios.get(`https://allorigins.hexlet.app/get?disableCache=true&url=${encodeURIComponent(url)}`)
       .then((response) => contents.concat(parseResponse(response, null, null))));
     return newAcc;
   }, initPromise);
@@ -146,7 +146,7 @@ export default () => {
           watchedState.rssField.state = 'requesting';
         }
       })
-      .then(() => axios.get(`https://allorigins.hexlet.app/get?url=${encodeURIComponent(value)}`))
+      .then(() => axios.get(`https://allorigins.hexlet.app/get?disableCache=true&url=${encodeURIComponent(value)}`))
       .then((response) => {
         watchedState.rssField.errors = '';
         const parsedResponse = parseResponse(response);
