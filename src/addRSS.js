@@ -146,7 +146,7 @@ export default () => {
       })
       .then(() => axios.get(`https://allorigins.hexlet.app/get?disableCache=true&url=${encodeURIComponent(value)}`))
       .then((response) => {
-        console.log('response: ', response);
+        console.log('response: ', JSON.stringify(response, null, 2));
         watchedState.rssField.errors = '';
         const parsedResponse = parseResponse(response);
         watchedState.rssList.push(parsedResponse);
