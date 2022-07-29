@@ -6,14 +6,10 @@ import axios from 'axios';
 import resources from './resources.js';
 import render from './view.js';
 
-const schema = yup.string().url()
-  // .matches(
-  //   /((https?):\/\/)?(www.)?[a-z0-9]+(\.[a-z]{2,}){1,3}
-  // (#?\/?[a-zA-Z0-9#]+)*\/?(\?[a-zA-Z0-9-_]+=[a-zA-Z0-9-%]+&?)?$/,
-  // )
-  .required();
+const schema = yup.string().url().required();
 
 const createPost = (postElement, feedId, postId) => {
+  console.log(postElement);
   const postTitle = postElement.querySelector('title').textContent;
   const postUrl = postElement.querySelector('link').textContent;
   const postDescription = postElement.querySelector('description').textContent;
@@ -27,6 +23,7 @@ const parseResponse = (response, feedId = _.uniqueId(), postId = _.uniqueId()) =
   const { url } = response.data.status;
   const parser = new DOMParser();
   const dom = parser.parseFromString(response.data.contents, 'text/xml');
+  console.log(dom);
   const parserError = dom.querySelector('parsererror');
   if (parserError) {
     const err = new Error();
