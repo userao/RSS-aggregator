@@ -149,6 +149,7 @@ export default () => {
         console.log('response: ', JSON.stringify(response, null, 2));
         watchedState.rssField.errors = '';
         const parsedResponse = parseResponse(response);
+        console.log('parsed response: ', JSON.stringify(parsedResponse, null, 2));
         watchedState.rssList.push(parsedResponse);
         watchedState.rssField.state = 'added';
       })
