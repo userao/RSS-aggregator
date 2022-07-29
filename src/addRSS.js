@@ -134,6 +134,7 @@ export default () => {
     watchedState.rssField.url = value;
     schema.validate(value)
       .then(() => {
+        console.log('validation finished');
         if (watchedState.rssList.filter(({ url }) => url === value).length) {
           watchedState.rssField.errors = errors.submitting.rssExists;
           const err = new Error();
@@ -145,6 +146,7 @@ export default () => {
       })
       .then(() => axios.get(`https://allorigins.hexlet.app/get?disableCache=true&url=${encodeURIComponent(value)}`))
       .then((response) => {
+        console.log('response: ', response);
         watchedState.rssField.errors = '';
         const parsedResponse = parseResponse(response);
         watchedState.rssList.push(parsedResponse);
