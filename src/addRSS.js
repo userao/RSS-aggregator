@@ -154,6 +154,7 @@ export default () => {
         watchedState.rssField.state = 'added';
       })
       .catch((err) => {
+        console.log(JSON.stringify(err, null, 2));
         switch (err.name) {
           case 'ValidationError':
             watchedState.rssField.errors = errors.submitting.invalidURL;
