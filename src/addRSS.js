@@ -148,7 +148,12 @@ export default () => {
       .then((response) => {
         console.log('response: ', JSON.stringify(response, null, 2));
         watchedState.rssField.errors = '';
-        const parsedResponse = parseResponse(response);
+        let parsedResponse
+        try {
+          parsedResponse = parseResponse(response);
+        } catch (e) {
+          console.log(e);
+        }
         console.log('parsed response: ', JSON.stringify(parsedResponse, null, 2));
         watchedState.rssList.push(parsedResponse);
         watchedState.rssField.state = 'added';
