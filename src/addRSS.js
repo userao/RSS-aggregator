@@ -9,7 +9,6 @@ import render from './view.js';
 const schema = yup.string().url().required();
 
 const createPost = (postElement, feedId, postId) => {
-  console.log(postElement);
   const postTitle = postElement.querySelector('title').textContent;
   const postUrl = postElement.querySelector('link').textContent;
   const postDescription = postElement.querySelector('description').textContent;
@@ -20,10 +19,8 @@ const createPost = (postElement, feedId, postId) => {
 };
 
 const parseResponse = (response, feedId = _.uniqueId(), postId = _.uniqueId()) => {
-  const { url } = response.data.status;
   const parser = new DOMParser();
   const dom = parser.parseFromString(response.data.contents, 'text/xml');
-  console.log(dom);
   const parserError = dom.querySelector('parsererror');
   if (parserError) {
     const err = new Error();
@@ -37,7 +34,6 @@ const parseResponse = (response, feedId = _.uniqueId(), postId = _.uniqueId()) =
     .map((item) => createPost(item, feedId, postId));
 
   return {
-    url,
     title,
     description,
     feedId,
@@ -134,7 +130,6 @@ export default () => {
     watchedState.rssField.url = value;
     schema.validate(value)
       .then(() => {
-        console.log('validation finished');
         if (watchedState.rssList.filter(({ url }) => url === value).length) {
           watchedState.rssField.errors = errors.submitting.rssExists;
           const err = new Error();
@@ -146,20 +141,13 @@ export default () => {
       })
       .then(() => axios.get(`https://allorigins.hexlet.app/get?disableCache=true&url=${encodeURIComponent(value)}`))
       .then((response) => {
-        console.log('response: ', JSON.stringify(response, null, 2));
         watchedState.rssField.errors = '';
-        let parsedResponse
-        try {
-          parsedResponse = parseResponse(response);
-        } catch (e) {
-          console.log(e);
-        }
-        console.log('parsed response: ', JSON.stringify(parsedResponse, null, 2));
+        const parsedResponse = parseResponse(response);
         watchedState.rssList.push(parsedResponse);
         watchedState.rssField.state = 'added';
       })
       .catch((err) => {
-        console.log(JSON.stringify(err, null, 2));
+        console.log(err);
         switch (err.name) {
           case 'ValidationError':
             watchedState.rssField.errors = errors.submitting.invalidURL;
