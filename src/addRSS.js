@@ -131,7 +131,6 @@ export default () => {
     watchedState.rssField.url = url;
     schema.validate(url)
       .then(() => {
-        console.log(watchedState.rssList);
         if (watchedState.rssList.filter(({ url: rssUrl }) => rssUrl === url).length) {
           watchedState.rssField.errors = errors.submitting.rssExists;
           const err = new Error();
