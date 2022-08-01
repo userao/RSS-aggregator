@@ -18,7 +18,7 @@ const createPost = (postElement, feedId, postId) => {
   };
 };
 
-const parseResponse = (response, feedId = _.uniqueId(), postId = _.uniqueId()) => {
+const parseResponse = (response, url, feedId = _.uniqueId(), postId = _.uniqueId()) => {
   const parser = new DOMParser();
   const dom = parser.parseFromString(response.data.contents, 'text/xml');
   const parserError = dom.querySelector('parsererror');
@@ -34,6 +34,7 @@ const parseResponse = (response, feedId = _.uniqueId(), postId = _.uniqueId()) =
     .map((item) => createPost(item, feedId, postId));
 
   return {
+    url,
     title,
     description,
     feedId,
@@ -126,11 +127,12 @@ export default () => {
     evt.preventDefault();
     state.rssField.state = 'submitting';
     const formData = new FormData(evt.target);
-    const value = formData.get('url').trim();
-    watchedState.rssField.url = value;
-    schema.validate(value)
+    const url = formData.get('url').trim();
+    watchedState.rssField.url = url;
+    schema.validate(url)
       .then(() => {
-        if (watchedState.rssList.filter(({ url }) => url === value).length) {
+        console.log(watchedState.rssList);
+        if (watchedState.rssList.filter(({ url: rssUrl }) => rssUrl === url).length) {
           watchedState.rssField.errors = errors.submitting.rssExists;
           const err = new Error();
           err.name = 'RSS exists';
@@ -139,10 +141,10 @@ export default () => {
           watchedState.rssField.state = 'requesting';
         }
       })
-      .then(() => axios.get(`https://allorigins.hexlet.app/get?disableCache=true&url=${encodeURIComponent(value)}`))
+      .then(() => axios.get(`https://allorigins.hexlet.app/get?disableCache=true&url=${encodeURIComponent(url)}`))
       .then((response) => {
         watchedState.rssField.errors = '';
-        const parsedResponse = parseResponse(response);
+        const parsedResponse = parseResponse(response, url);
         watchedState.rssList.push(parsedResponse);
         watchedState.rssField.state = 'added';
       })
