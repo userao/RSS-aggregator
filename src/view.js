@@ -62,7 +62,6 @@ const findPost = ({ rssList }, id) => {
   return post;
 };
 
-// отображает дескрипшн только первого поста
 const renderModal = (evt, state, i18nInstance) => {
   const targetButton = evt.target;
   const link = targetButton.previousElementSibling;
