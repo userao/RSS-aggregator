@@ -149,7 +149,6 @@ export default () => {
         watchedState.rssField.state = 'added';
       })
       .catch((err) => {
-        console.log(err);
         switch (err.name) {
           case 'ValidationError':
             watchedState.rssField.errors = errors.submitting.invalidURL;
@@ -169,16 +168,6 @@ export default () => {
         watchedState.rssField.state = 'error';
       });
   });
-
-  // const lng = document.createElement('button');
-  // lng.classList.add('switch', 'btn', 'btn-primary');
-  // document.body.append(lng);
-  // lng.addEventListener('click', (evt) => {
-  //   evt.preventDefault();
-  //   const newLang = watchedState.lng === 'en' ? 'ru' : 'en';
-  //   i18nInstance.changeLanguage(newLang);
-  //   watchedState.lng = newLang;
-  // });
 
   refresh(state);
   render(state, elements, i18nInstance);
