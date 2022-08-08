@@ -1,85 +1,72 @@
-import _ from 'lodash';
+import onChange from 'on-change';
 
-const renderFeed = (feedTitle, feedDescription, list) => {
-  const newFeed = document.createElement('li');
-  newFeed.classList.add('list-group-item', 'border-0', 'border-end-0');
-
-  const feedHeaderEl = document.createElement('h3');
-  feedHeaderEl.classList.add('h6', 'm-0');
-  feedHeaderEl.textContent = feedTitle.textContent;
-
-  const feedDescriptionEl = document.createElement('p');
-  feedDescriptionEl.classList.add('m-0', 'small', 'text-black-50');
-  feedDescriptionEl.textContent = feedDescription.textContent;
-
-  newFeed.append(feedHeaderEl, feedDescriptionEl);
-  list.prepend(newFeed);
+const findPost = ({ posts }, desiredId) => {
+  const [post] = posts.filter(({ id }) => id === desiredId);
+  return post;
 };
 
-const renderPosts = (items, list, i18nInstance) => {
-  items.slice().reverse().forEach(({
-    postTitle, postUrl, postId, state,
-  }) => {
+const renderFeeds = (state, elements, i18nInstance) => {
+  elements.feeds.header.textContent = i18nInstance.t('feeds');
+  elements.feeds.list.innerHTML = '';
+
+  state.feeds.forEach((feed) => {
+    const newFeed = document.createElement('li');
+    newFeed.classList.add('list-group-item', 'border-0', 'border-end-0');
+
+    const feedHeaderEl = document.createElement('h3');
+    feedHeaderEl.classList.add('h6', 'm-0');
+    feedHeaderEl.textContent = feed.title.textContent;
+
+    const feedDescriptionEl = document.createElement('p');
+    feedDescriptionEl.classList.add('m-0', 'small', 'text-black-50');
+    feedDescriptionEl.textContent = feed.description.textContent;
+    newFeed.append(feedHeaderEl, feedDescriptionEl);
+    elements.feeds.list.prepend(newFeed);
+  });
+};
+
+const renderPosts = (state, elements, i18nInstance) => {
+  elements.posts.header.textContent = i18nInstance.t('feeds');
+  elements.posts.list.innerHTML = '';
+  state.posts.forEach((post) => {
     const newPost = document.createElement('li');
     newPost.classList.add('list-group-item', 'd-flex', 'justify-content-between', 'align-items-start', 'border-0', 'border-end-0');
 
     const link = document.createElement('a');
-    const linkFontWeight = state === 'read' ? 'fw-normal' : 'fw-bold';
+    const linkFontWeight = post.state === 'read' ? 'fw-normal' : 'fw-bold';
     link.classList.add(linkFontWeight);
-    link.setAttribute('href', `${postUrl}`);
+    link.setAttribute('href', `${post.url}`);
     link.setAttribute('target', '_blank');
-    link.setAttribute('data-id', postId);
-    link.textContent = postTitle;
+    link.setAttribute('data-id', post.id);
+    link.textContent = post.title;
 
     const button = document.createElement('button');
     button.classList.add('btn', 'btn-outline-primary', 'btn-sm');
     button.setAttribute('type', 'button');
     button.setAttribute('data-bs-toggle', 'modal');
     button.setAttribute('data-bs-target', '#modal');
-    button.setAttribute('data-id', postId);
+    button.setAttribute('data-id', post.id);
     button.textContent = i18nInstance.t('show');
 
     newPost.append(link, button);
-    list.prepend(newPost);
+    elements.posts.list.prepend(newPost);
   });
 };
 
-const render = ({ title, description, items }, elements, i18nInstance) => {
-  const feedsList = elements.feeds.querySelector('ul');
-  const postsList = elements.posts.querySelector('ul');
-  elements.feeds.querySelector('h2').textContent = i18nInstance.t('feeds');
-  elements.posts.querySelector('h2').textContent = i18nInstance.t('posts');
-
-  renderFeed(title, description, feedsList);
-  renderPosts(items, postsList, i18nInstance);
-};
-
-const findPost = ({ rssList }, id) => {
-  let post;
-  rssList.forEach((feed) => {
-    post = _.find(feed.items, (item) => item.postId === id);
-  });
-  return post;
-};
-
-const renderModal = (evt, state, i18nInstance) => {
-  const targetButton = evt.target;
-  const link = targetButton.previousElementSibling;
+const renderModal = (state, i18nInstance) => {
+  const link = state.modal.target.previousElementSibling;
   link.classList.remove('fw-bold');
   link.classList.add('fw-normal');
 
-  const postId = targetButton.dataset.id;
-  const post = findPost(state, postId);
-  post.state = 'read';
   const modalTitle = document.querySelector('.modal-title');
-  modalTitle.textContent = post.postTitle;
+  modalTitle.textContent = state.modal.post.title;
 
   const modalBody = document.querySelector('.modal-body > p');
-  modalBody.textContent = post.postDescription;
+  modalBody.textContent = state.modal.post.description;
 
   const primaryBtn = document.querySelector('.btn-primary');
   primaryBtn.textContent = i18nInstance.t('readMore');
-  primaryBtn.setAttribute('href', post.postUrl);
+  primaryBtn.setAttribute('href', state.modal.post.url);
 
   const secondaryBtn = document.querySelector('.btn-secondary');
   secondaryBtn.textContent = i18nInstance.t('close');
@@ -100,7 +87,9 @@ const init = (elements) => {
       list.classList.add('list-group', 'border-0', 'rounded-0');
       headerContainer.append(header);
       container.append(headerContainer, list);
-      element.append(container);
+      element.container.append(container);
+      element.header = header;
+      element.list = list;
     });
 };
 
@@ -112,10 +101,17 @@ export default (state, elements, i18nInstance) => {
   elements.input.setAttribute('placeholder', `${i18nInstance.t('label')}`);
   elements.input.removeAttribute('disabled');
 
+  const watchedState = onChange(state, (path) => {
+    if (path === 'modal') renderModal(state, i18nInstance);
+    // if (path.includes('posts')) {
+    //   renderPosts(state, elements, i18nInstance);
+    // }
+  });
+
   switch (state.rssField.state) {
     case 'error':
       elements.input.classList.add('is-invalid');
-      elements.feedback.textContent = state.rssField.errors;
+      elements.feedback.textContent = i18nInstance.t(state.rssField.errors);
       elements.feedback.classList.remove('text-success');
       elements.feedback.classList.add('text-danger');
       break;
@@ -126,14 +122,11 @@ export default (state, elements, i18nInstance) => {
       break;
 
     case 'added':
-      if (!elements.feeds.children.length) {
+      if (!elements.feeds.container.children.length) {
         init(elements);
       }
-      elements.feeds.querySelector('ul').innerHTML = '';
-      elements.posts.querySelector('ul').innerHTML = '';
-      state.rssList.forEach((rss) => {
-        render(rss, elements, i18nInstance);
-      });
+      renderFeeds(state, elements, i18nInstance);
+      renderPosts(state, elements, i18nInstance);
       elements.input.classList.remove('is-invalid');
       elements.feedback.textContent = i18nInstance.t('rssLoaded');
       elements.feedback.classList.add('text-success');
@@ -148,17 +141,22 @@ export default (state, elements, i18nInstance) => {
 
   const viewButton = document.querySelectorAll('[data-bs-toggle="modal"]');
   viewButton.forEach((button) => {
-    button.addEventListener('click', (evt) => renderModal(evt, state, i18nInstance));
+    button.addEventListener('click', (evt) => {
+      const postId = evt.target.dataset.id;
+      const post = findPost(watchedState, postId);
+      post.state = 'read';
+      watchedState.modal = {
+        target: evt.target,
+        post,
+      };
+    });
   });
 
   const postLinks = document.querySelectorAll('.list-group-item > a');
   postLinks.forEach((link) => {
     link.addEventListener('click', (evt) => {
-      evt.target.classList.remove('fw-bold');
-      evt.target.classList.add('fw-normal');
       const postId = evt.target.dataset.id;
-
-      const post = findPost(state, postId);
+      const post = findPost(watchedState, postId);
       post.state = 'read';
     });
   });

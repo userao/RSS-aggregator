@@ -6,72 +6,71 @@ import axios from 'axios';
 import resources from './resources.js';
 import render from './view.js';
 
-const schema = yup.string().url().required();
+const validate = (url, { feeds }) => {
+  const existingUrls = feeds.map(({ url: existingUrl }) => existingUrl);
+  const schema = yup.string().url('Must be valid URL').notOneOf(existingUrls, 'RSS exists').required();
+  return schema.validate(url);
+};
 
-const createPost = (postElement, feedId, postId) => {
-  const postTitle = postElement.querySelector('title').textContent;
-  const postUrl = postElement.querySelector('link').textContent;
-  const postDescription = postElement.querySelector('description').textContent;
+const createPost = (postElement, feedId) => {
+  const title = postElement.querySelector('title').textContent;
+  const url = postElement.querySelector('link').textContent;
+  const description = postElement.querySelector('description').textContent;
   const parentFeedId = feedId;
   return {
-    postTitle, postUrl, postDescription, state: 'unread', parentFeedId, postId,
+    title, url, description, state: 'unread', parentFeedId, id: _.uniqueId(),
   };
 };
 
-const parseResponse = (response, url, feedId = _.uniqueId(), postId = _.uniqueId()) => {
+const parseResponse = (response, url, feedId = _.uniqueId()) => {
   const parser = new DOMParser();
   const dom = parser.parseFromString(response.data.contents, 'text/xml');
   const parserError = dom.querySelector('parsererror');
   if (parserError) {
     const err = new Error();
-    err.name = 'No valid RSS';
+    err.message = 'No valid RSS';
     throw err;
   }
 
   const title = dom.querySelector('title');
   const description = dom.querySelector('description');
   const items = Array.from(dom.querySelectorAll('item'))
-    .map((item) => createPost(item, feedId, postId));
+    .map((item) => createPost(item, feedId));
 
-  return {
-    url,
-    title,
-    description,
-    feedId,
+  return [
+    {
+      url, title, description, feedId,
+    },
     items,
-  };
+  ];
 };
 
 const refresh = (state) => {
-  const urls = state.rssList.reduce((acc, { url }) => [...acc, url], []);
-  const initPromise = Promise.resolve([]);
-  const promise = urls.reduce((acc, url) => {
-    const newAcc = acc.then((contents) => axios.get(`https://allorigins.hexlet.app/get?disableCache=true&url=${encodeURIComponent(url)}`)
-      .then((response) => contents.concat(parseResponse(response, null, null))));
-    return newAcc;
-  }, initPromise);
+  const urls = state.feeds.reduce((acc, { url }) => [...acc, url], []);
+  const promises = urls.map((url) => axios.get(`https://allorigins.hexlet.app/get?disableCache=true&url=${encodeURIComponent(url)}`));
+  Promise.all(promises)
+    .then((responses) => {
+      const parsedResponses = {
+        feeds: [],
+        posts: [],
+      };
 
-  promise.then((responses) => {
-    responses.forEach((currentRss) => {
-      const { url } = currentRss;
-      const oldRss = _.find(state.rssList, (rss) => rss.url === url);
-      const newPosts = currentRss.items.reduce((acc, item) => {
-        const newAcc = acc.slice();
-        if (!_.find(oldRss.items, (oldItem) => oldItem.postTitle === item.postTitle)) {
-          newAcc.push(item);
-        }
-        return newAcc;
-      }, [])
-        .map((item) => {
-          item.postId = _.uniqueId();
-          item.parentFeedId = oldRss.feedId;
-          return item;
+      responses.forEach((response) => {
+        const [feed, posts] = parseResponse(response, null, null);
+        const [parentPost] = state.feeds
+          .filter(({ title }) => feed.title.textContent === title.textContent);
+        posts.forEach((post) => {
+          post.parentFeedId = parentPost.feedId;
         });
-      oldRss.items.concat(newPosts);
-    });
-  });
+        parsedResponses.feeds.push(feed);
+        parsedResponses.posts = [...parsedResponses.posts, ...posts];
+      });
 
-  setTimeout(() => refresh(state), 5000);
+      if (parsedResponses.posts.length > state.posts.length) {
+        state.post = parsedResponses.posts;
+      }
+    })
+    .then(() => setTimeout(() => refresh(state), 5000));
 };
 
 export default () => {
@@ -82,8 +81,12 @@ export default () => {
     label: document.querySelector('label'),
     submitButton: document.querySelector('[type="submit"]'),
     feedback: document.querySelector('.feedback'),
-    posts: document.querySelector('.posts'),
-    feeds: document.querySelector('.feeds'),
+    posts: {
+      container: document.querySelector('.posts'),
+    },
+    feeds: {
+      container: document.querySelector('.feeds'),
+    },
     modal: document.querySelector('#modal'),
   };
 
@@ -95,29 +98,31 @@ export default () => {
   });
 
   const errors = {
-    submitting: {
-      rssExists: i18nInstance.t('alreadyExists'),
-      invalidURL: i18nInstance.t('mustBeValid'),
-      noValidRSS: i18nInstance.t('noValidRSS'),
-      networkError: i18nInstance.t('networkError'),
-    },
-    unknownError: i18nInstance.t('unknownError'),
+    'RSS exists': 'errors.alreadyExists',
+    'Must be valid URL': 'errors.mustBeValid',
+    'No valid RSS': 'errors.noValidRSS',
+    'Network Error': 'errors.networkError',
+    'Cannot read properties of null (reading \'textContent\')': 'errors.unknownError',
   };
 
   const state = {
     lng: defaultLanguage,
+    modal: 'hidden',
     rssField: {
       state: '',
       url: '',
       errors: '',
     },
-    rssList: [],
+    feeds: [],
+    posts: [],
   };
 
   const watchedState = onChange(state, (path) => {
     if (path === 'rssField.state'
       || path === 'lng'
-      || path === 'rssList') {
+      || path === 'feeds'
+      || path === 'posts'
+      || path === 'modal') {
       render(state, elements, i18nInstance);
     }
   });
@@ -129,41 +134,20 @@ export default () => {
     const formData = new FormData(evt.target);
     const url = formData.get('url').trim();
     watchedState.rssField.url = url;
-    schema.validate(url)
+    validate(url, state)
       .then(() => {
-        if (watchedState.rssList.filter(({ url: rssUrl }) => rssUrl === url).length) {
-          watchedState.rssField.errors = errors.submitting.rssExists;
-          const err = new Error();
-          err.name = 'RSS exists';
-          throw err;
-        } else {
-          watchedState.rssField.state = 'requesting';
-        }
+        watchedState.rssField.state = 'requesting';
       })
       .then(() => axios.get(`https://allorigins.hexlet.app/get?disableCache=true&url=${encodeURIComponent(url)}`))
       .then((response) => {
         watchedState.rssField.errors = '';
-        const parsedResponse = parseResponse(response, url);
-        watchedState.rssList.push(parsedResponse);
+        const [feed, posts] = parseResponse(response, url);
+        watchedState.posts = [...watchedState.posts, ...posts];
+        watchedState.feeds.push(feed);
         watchedState.rssField.state = 'added';
       })
       .catch((err) => {
-        switch (err.name) {
-          case 'ValidationError':
-            watchedState.rssField.errors = errors.submitting.invalidURL;
-            break;
-          case 'RSS exists':
-            watchedState.rssField.errors = errors.submitting.rssExists;
-            break;
-          case 'AxiosError':
-            watchedState.rssField.errors = errors.submitting.networkError;
-            break;
-          case 'No valid RSS':
-            watchedState.rssField.errors = errors.submitting.noValidRSS;
-            break;
-          default:
-            watchedState.rssField.errors = errors.unknownError;
-        }
+        watchedState.rssField.errors = errors[err.message];
         watchedState.rssField.state = 'error';
       });
   });
