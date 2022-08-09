@@ -53,11 +53,18 @@ const renderPosts = (state, elements, i18nInstance) => {
   });
 };
 
-const renderModal = (state, i18nInstance) => {
-  const link = state.modal.target.previousElementSibling;
-  link.classList.remove('fw-bold');
-  link.classList.add('fw-normal');
+const formatLinksText = (state) => {
+  const links = document.querySelectorAll('.list-group-item > a');
+  links.forEach((link) => {
+    const post = findPost(state, link.dataset.id);
+    if (post.state === 'read') {
+      link.classList.remove('fw-bold');
+      link.classList.add('fw-normal');
+    }
+  });
+};
 
+const renderModal = (state, i18nInstance) => {
   const modalTitle = document.querySelector('.modal-title');
   modalTitle.textContent = state.modal.post.title;
 
@@ -103,9 +110,9 @@ export default (state, elements, i18nInstance) => {
 
   const watchedState = onChange(state, (path) => {
     if (path === 'modal') renderModal(state, i18nInstance);
-    // if (path.includes('posts')) {
-    //   renderPosts(state, elements, i18nInstance);
-    // }
+    if (path.includes('posts')) {
+      formatLinksText(state);
+    }
   });
 
   switch (state.rssField.state) {
@@ -144,11 +151,11 @@ export default (state, elements, i18nInstance) => {
     button.addEventListener('click', (evt) => {
       const postId = evt.target.dataset.id;
       const post = findPost(watchedState, postId);
-      post.state = 'read';
       watchedState.modal = {
         target: evt.target,
         post,
       };
+      post.state = 'read';
     });
   });
 
