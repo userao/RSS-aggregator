@@ -12,17 +12,20 @@ const validate = (url, { feeds }) => {
   return schema.validate(url);
 };
 
-const createPost = (postElement, feedId) => {
+const getFeedId = (feed) => ({ ...feed, id: _.uniqueId() });
+
+const getPostId = (feed, post) => ({ ...post, id: _.uniqueId(), parentFeedId: feed.id });
+
+const createPost = (postElement) => {
   const title = postElement.querySelector('title').textContent;
   const url = postElement.querySelector('link').textContent;
   const description = postElement.querySelector('description').textContent;
-  const parentFeedId = feedId;
   return {
-    title, url, description, state: 'unread', parentFeedId, id: _.uniqueId(),
+    title, url, description,
   };
 };
 
-const parseResponse = (response, url, feedId = _.uniqueId()) => {
+const parseResponse = (response, url) => {
   const parser = new DOMParser();
   const dom = parser.parseFromString(response.data.contents, 'text/xml');
   const parserError = dom.querySelector('parsererror');
@@ -34,41 +37,36 @@ const parseResponse = (response, url, feedId = _.uniqueId()) => {
 
   const title = dom.querySelector('title');
   const description = dom.querySelector('description');
-  const items = Array.from(dom.querySelectorAll('item'))
-    .map((item) => createPost(item, feedId));
+  const posts = Array.from(dom.querySelectorAll('item'))
+    .map((item) => createPost(item));
 
-  return [
-    {
-      url, title, description, feedId,
+  return {
+    feed: {
+      url, title, description,
     },
-    items,
-  ];
+    posts,
+  };
 };
 
 const refresh = (state) => {
-  const urls = state.feeds.reduce((acc, { url }) => [...acc, url], []);
+  const urls = state.feeds.map(({ url }) => url);
   const promises = urls.map((url) => axios.get(`https://allorigins.hexlet.app/get?disableCache=true&url=${encodeURIComponent(url)}`));
   Promise.all(promises)
     .then((responses) => {
-      const parsedResponses = {
-        feeds: [],
-        posts: [],
-      };
-
       responses.forEach((response) => {
-        const [feed, posts] = parseResponse(response, null, null);
-        const [parentPost] = state.feeds
+        const { feed, posts } = parseResponse(response);
+        const [parentFeed] = state.feeds
           .filter(({ title }) => feed.title.textContent === title.textContent);
-        posts.forEach((post) => {
-          post.parentFeedId = parentPost.feedId;
-        });
-        parsedResponses.feeds.push(feed);
-        parsedResponses.posts = [...parsedResponses.posts, ...posts];
-      });
 
-      if (parsedResponses.posts.length > state.posts.length) {
-        state.post = parsedResponses.posts;
-      }
+        const newPosts = posts.filter((post) => {
+          const [foundPost] = state.posts
+            .filter((existingPost) => existingPost.title.textContent === post.title.textContent);
+          return !foundPost;
+        });
+
+        newPosts.forEach((post) => getPostId(parentFeed, post));
+        state.posts = [...state.posts, ...newPosts];
+      });
     })
     .then(() => setTimeout(() => refresh(state), 5000));
 };
@@ -137,11 +135,17 @@ export default () => {
     validate(url, state)
       .then(() => {
         watchedState.rssField.state = 'requesting';
+        return axios.get(`https://allorigins.hexlet.app/get?disableCache=true&url=${encodeURIComponent(url)}`);
       })
-      .then(() => axios.get(`https://allorigins.hexlet.app/get?disableCache=true&url=${encodeURIComponent(url)}`))
       .then((response) => {
         watchedState.rssField.errors = '';
-        const [feed, posts] = parseResponse(response, url);
+        let { feed, posts } = parseResponse(response, url);
+        feed = getFeedId(feed);
+        posts = posts.map((post) => {
+          const normalizedPost = getPostId(feed, post);
+          normalizedPost.state = 'unread';
+          return normalizedPost;
+        });
         watchedState.posts = [...watchedState.posts, ...posts];
         watchedState.feeds.push(feed);
         watchedState.rssField.state = 'added';
